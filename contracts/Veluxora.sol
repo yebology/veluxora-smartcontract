@@ -140,10 +140,7 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         _safeTransfer(address(this), _to, _tokenId);
     }
 
-    function _transferETH(
-        address payable _receiver,
-        uint256 _amount
-    ) private {
+    function _transferETH(address payable _receiver, uint256 _amount) private {
         (bool sent, ) = _receiver.call{value: _amount}("");
         require(sent, "Failed to transfer!");
     }
@@ -350,5 +347,11 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         uint256 _tokenId
     ) public view override returns (string memory) {
         return tokenURI(_tokenId);
+    }
+
+    receive() external payable {}
+
+    fallback() external payable {
+        revert("Function does not exist");
     }
 }
