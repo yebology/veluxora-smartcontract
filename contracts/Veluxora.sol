@@ -7,9 +7,128 @@ import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Hol
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract Veluxora is ERC721URIStorage, ReentrancyGuard {
-    // 
-    
+contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
+    //
+    struct Auction {
+        address creator;
+        uint256 bpkbId;
+        uint256 stnkId;
+        uint256 minBid;
+        uint256 highestBid;
+        address highestBidder;
+        uint256 startTime;
+        uint256 endTime;
+        bool claimed;
+        bool canceled;
+    }
+    struct Bid {
+        address bidder;
+        uint256 amount;
+    }
+
+    mapping(string => Auction) public auctions; // list auction
+    mapping(string => Bid[]) public bids;
+
+    mapping(address => bool) public registeredUsers; // list user
+    mapping(uint256 => bool) public tokenExist;
+    mapping(string => bool) public auctionExist;
+
+    // Events
+    event NewUserRegistered(address user, string message);
+    event NewAuctionCreated(
+        address indexed creator,
+        string auctionId,
+        string message
+    );
+    event NewBidAdded(
+        address indexed bidder,
+        string auctionId,
+        uint256 amount,
+        string message
+    );
+    event DepositReturned(
+        address indexed bidder,
+        string indexed auctionId,
+        uint256 amount,
+        string message
+    );
+    event WinningETHTransferred(
+        address indexed creator,
+        string indexed auctionId,
+        uint256 amount,
+        string message
+    );
+    event NFTClaimedByWinner(
+        string indexed auctionId,
+        address indexed winner,
+        uint256 bpkbTokenId,
+        uint256 stnkTokenId
+    );
+
+    event AuctionCanceled(string auctionId, string message);
+
+    // Modifiers
+    modifier onlyRegistered() {
+        require(registeredUsers[msg.sender], "You must be a registered user.");
+        _;
+    }
+
+    modifier auctionExists(string memory _id) {
+        require(auctionExist[_id], "Auction does not exist.");
+        _;
+    }
+
+    modifier onlyAuctionCreator(string memory _id) {
+        require(
+            msg.sender == auctions[_id].creator,
+            "Only auction creator can call this."
+        );
+        _;
+    }
+
+    modifier onlyBeforeAuctionStart(string memory _id) {
+        require(
+            block.timestamp < auctions[_id].startTime,
+            "Auction already started."
+        );
+        _;
+    }
+
+    modifier onlyAfterDeadline(string memory _id) {
+        require(
+            block.timestamp >= auctions[_id].endTime,
+            "Auction is still active."
+        );
+        _;
+    }
+
+    modifier onlyWhileAuctionActive(string memory _id) {
+        require(
+            block.timestamp >= auctions[_id].startTime &&
+                block.timestamp < auctions[_id].endTime,
+            "Auction is not active or has already ended"
+        );
+        _;
+    }
+
+    modifier onlyIfNotCanceled(string memory _id) {
+        require(!auctions[_id].canceled, "Auction has been canceled");
+        _;
+    }
+
+    modifier onlyAuctionHighestBidder(string memory _id) {
+        require(
+            msg.sender == auctions[_id].highestBidder,
+            "Caller isn't a the highest bidder"
+        );
+        _;
+    }
+
+    modifier onlyNonRegisteredToken(uint256 _tokenId) {
+        require(!tokenExist[_tokenId], "Token ID already registered!");
+        _;
+    }
+
     constructor() ERC721("Veluxora", "VLX") {}
 
     function _createToken(uint256 _tokenId, string memory _uri) private {
@@ -21,95 +140,9 @@ contract Veluxora is ERC721URIStorage, ReentrancyGuard {
         _safeTransfer(address(this), _to, _tokenId);
     }
 
-    struct Auction {
-        address creator;
-        uint256 bpkbId; // nft
-        uint256 stnkId; // nft
-        uint256 minBid;
-        uint256 highestBid;
-        address highestBidder;
-        uint256 startTime;
-        uint256 deadline;
-        bool ended;
-        bool claimed;
-    }
-
-    mapping(uint256 => Auction) public auctions; //list auction
-    mapping(address => bool) public registeredUsers; //list user
-    mapping(uint256 => mapping(address => uint256)) public userBids; //list jumlah bid yang ada (sekalian buat tahan dana)
-    uint256 public auctionCount;
-
-    // Events
-    event NewUserRegistered(address user, string message);
-    event NewAuctionCreated(
-        address indexed creator,
-        uint256 auctionId,
-        string message
-    );
-    event NewBidAdded(
-        address indexed bidder,
-        uint256 auctionId,
-        uint256 amount,
-        string message
-    );
-    event DepositReturned(
-        address indexed bidder,
-        uint256 indexed auctionId,
-        uint256 amount,
-        string message
-    );
-    event WinnerAnnounced(
-        address indexed winner,
-        uint256 auctionId,
-        uint256 amount,
-        string message
-    );
-    event WinningETHTransferred(
-        address indexed creator,
-        uint256 indexed auctionId,
-        uint256 amount,
-        string message
-    );
-    event AuctionCanceled(uint256 auctionId, string message);
-
-    // Modifiers
-    modifier onlyRegistered() {
-        require(registeredUsers[msg.sender], "You must be a registered user.");
-        _;
-    }
-
-    modifier auctionExists(uint256 _id) {
-        require(_id < auctionCount, "Auction does not exist.");
-        _;
-    }
-
-    modifier onlyAuctionCreator(uint256 _id) {
-        require(
-            msg.sender == auctions[_id].creator,
-            "Only auction creator can call this."
-        );
-        _;
-    }
-
-    modifier onlyBeforeDeadline(uint256 _id) {
-        require(block.timestamp < auctions[_id].deadline, "Auction has ended.");
-        _;
-    }
-
-    modifier onlyAfterDeadline(uint256 _id) {
-        require(
-            block.timestamp >= auctions[_id].deadline,
-            "Auction is still active."
-        );
-        _;
-    }
-
-    modifier onlyAfterStart(uint256 _id) {
-        require(
-            block.timestamp >= auctions[_id].startTime,
-            "Auction has not started yet."
-        );
-        _;
+    function _transferETH(address payable _receiver, uint256 _amount) private {
+        (bool sent, ) = _receiver.call{value: _amount}("");
+        require(sent, "Failed to transfer!");
     }
 
     // Register user
@@ -121,172 +154,206 @@ contract Veluxora is ERC721URIStorage, ReentrancyGuard {
 
     // Create new auction
     function createAuction(
+        string memory _id,
         uint256 _minBid,
-        uint256 _startDelayInMinutes,
-        uint256 _durationInMinutes,
+        uint256 _startTime,
+        uint256 _endTime,
         uint256 _bpkbTokenId,
         uint256 _stnkTokenId,
         string memory _bpkbUri,
         string memory _stnkUri
-    ) external onlyRegistered {
+    )
+        external
+        onlyRegistered
+        onlyNonRegisteredToken(_bpkbTokenId)
+        onlyNonRegisteredToken(_stnkTokenId)
+    {
         require(_minBid > 0, "Minimum bid must be greater than 0.");
-        uint256 auctionId = auctionCount++;
-        uint256 start = block.timestamp + (_startDelayInMinutes * 1 minutes);
+        require(_startTime >= block.timestamp, "Start time must be in the future.");
+        require(_endTime > _startTime, "End time must be after start time.");
+
         _createToken(_bpkbTokenId, _bpkbUri);
         _createToken(_stnkTokenId, _stnkUri);
-        auctions[auctionId] = Auction({
-            creator: payable(msg.sender),
+
+        auctions[_id] = Auction({
+            creator: msg.sender,
             bpkbId: _bpkbTokenId,
             stnkId: _stnkTokenId,
             minBid: _minBid,
             highestBid: 0,
-            highestBidder: payable(address(0)),
-            startTime: start,
-            deadline: start + (_durationInMinutes * 1 minutes),
-            ended: false,
-            claimed: false
+            highestBidder: address(0),
+            startTime: _startTime,
+            endTime: _endTime,
+            claimed: false,
+            canceled: false
         });
-<<<<<<< Updated upstream
-=======
 
-        auctionExist[_id] = true;
-
->>>>>>> Stashed changes
         emit NewAuctionCreated(
             msg.sender,
-            auctionId,
+            _id,
             "Auction successfully created."
         );
     }
 
     // Bid on an auction
-    function bid(uint256 _id)
+    function bid(
+        string memory _id
+    )
         external
         payable
         onlyRegistered
         auctionExists(_id)
-        onlyBeforeDeadline(_id)
-        onlyAfterStart(_id)
+        onlyWhileAuctionActive(_id)
+        onlyIfNotCanceled(_id)
+        nonReentrant
     {
-        Auction storage auc = auctions[_id];
-        require(msg.value >= auc.minBid, "Bid below minimum.");
-        require(msg.value > auc.highestBid, "Bid not high enough.");
+        require(msg.value >= auctions[_id].minBid, "Bid below minimum.");
+        require(msg.value > auctions[_id].highestBid, "Bid not high enough.");
 
-        if (auc.highestBidder != address(0)) { // Jika sudah ada penawar tertinggi sebelumnya (bukan lelang baru)
-            userBids[_id][auc.highestBidder] = 0; //Reset bid pengguna sebelumnya
-            (bool sent, ) = auc.highestBidder.call{value: auc.highestBid}(""); //Balikan uang
-            require(sent, "Failed to return");
+        if (auctions[_id].highestBidder != address(0)) {
+            _transferETH(
+                payable(auctions[_id].highestBidder),
+                auctions[_id].highestBid
+            );
+
             emit DepositReturned(
-                auc.highestBidder,
+                auctions[_id].highestBidder,
                 _id,
-                auc.highestBid,
+                auctions[_id].highestBid,
                 "Previous deposit returned."
             );
         }
 
-        auc.highestBid = msg.value;
-        auc.highestBidder = payable(msg.sender);
-        userBids[_id][msg.sender] = msg.value;
+        _transferETH(payable(address(this)), msg.value);
+
+        auctions[_id].highestBid = msg.value;
+        auctions[_id].highestBidder = msg.sender;
+        bids[_id].push(Bid(msg.sender, msg.value));
 
         emit NewBidAdded(msg.sender, _id, msg.value, "New bid placed.");
     }
 
-    // Finalize auction
-    function finalizeAuction(uint256 _id)
+    // Claim NFT
+    function claimNFTForAuctionWinner(
+        string memory _id
+    )
         external
         auctionExists(_id)
         onlyAfterDeadline(_id)
+        onlyAuctionHighestBidder(_id)
+        onlyIfNotCanceled(_id)
+        nonReentrant
     {
-        Auction storage auc = auctions[_id];
-        require(!auc.ended, "Auction already ended.");
-        auc.ended = true;
+        _transferToken(auctions[_id].bpkbId, msg.sender);
+        _transferToken(auctions[_id].stnkId, msg.sender);
 
-        if (auc.highestBidder != address(0)) {
-            emit WinnerAnnounced(
-                auc.highestBidder,
-                _id,
-                auc.highestBid,
-                "Winner has been determined."
-            );
-        }
+        emit NFTClaimedByWinner(
+            _id,
+            msg.sender,
+            auctions[_id].bpkbId,
+            auctions[_id].stnkId
+        );
     }
 
     // Claim ETH
-    function claimWinningETH(uint256 _id)
+    function claimETHForAuctionCreator(
+        string memory _id
+    )
         external
         auctionExists(_id)
         onlyAuctionCreator(_id)
         onlyAfterDeadline(_id)
+        nonReentrant
     {
-        Auction storage auc = auctions[_id];
-        require(auc.ended, "Auction not ended yet.");
-        require(!auc.claimed, "Already claimed.");
-        require(auc.highestBid > 0, "No bids.");
+        require(!auctions[_id].claimed, "Already claimed.");
+        require(auctions[_id].highestBid > 0, "No bids.");
 
-        auc.claimed = true;
-        (bool sent, ) = auc.creator.call{value: auc.highestBid}("");
-        require(sent, "Failed to transfer funds to auction creator.");
+        auctions[_id].claimed = true;
+        _transferETH(payable(auctions[_id].creator), auctions[_id].highestBid);
 
         emit WinningETHTransferred(
-            auc.creator,
+            auctions[_id].creator,
             _id,
-            auc.highestBid,
+            auctions[_id].highestBid,
             "Funds transferred to auction creator."
         );
     }
 
     // Cancel auction
-    function cancelAuction(uint256 _id)
+    function cancelAuction(
+        string memory _id
+    )
         external
         auctionExists(_id)
         onlyAuctionCreator(_id)
+        onlyIfNotCanceled(_id)
+        onlyBeforeAuctionStart(_id)
+        nonReentrant
     {
-        Auction storage auc = auctions[_id];
-        require(!auc.ended, "Auction already ended.");
-        require(block.timestamp < auc.startTime, "Auction already started.");
+        auctions[_id].canceled = true;
+        _transferToken(auctions[_id].bpkbId, msg.sender);
+        _transferToken(auctions[_id].stnkId, msg.sender);
 
-        auc.ended = true;
         emit AuctionCanceled(_id, "Auction canceled.");
     }
 
-    // View highest bid
-    function getHighestBid(uint256 _id)
-        external
-        view
-        auctionExists(_id)
-        returns (address bidder, uint256 amount)
-    {
-        Auction memory auc = auctions[_id];
-        return (auc.highestBidder, auc.highestBid);
-    }
-
     function updateAuction(
-        uint256 _id,
+        string memory _id,
         uint256 _newMinBid,
         uint256 _newStartTime,
-        uint256 _newDeadline,
+        uint256 _newEndTime,
         uint256 _bpkbTokenId,
         uint256 _stnkTokenId,
         string memory _bpkbUri,
         string memory _stnkUri
-    ) external auctionExists(_id) onlyAuctionCreator(_id) {
-        Auction storage auc = auctions[_id];
-        require(!auc.ended, "Auction already ended.");
-        require(block.timestamp < auc.deadline, "Auction deadline has passed.");
+    )
+        external
+        auctionExists(_id)
+        onlyAuctionCreator(_id)
+        onlyBeforeAuctionStart(_id)
+        onlyIfNotCanceled(_id)
+        nonReentrant
+    {
         require(_newMinBid > 0, "Minimum bid must be greater than 0.");
         require(
-            _newStartTime < _newDeadline,
+            _newStartTime < _newEndTime,
             "Start time must be before deadline."
         );
 
-        auc.minBid = _newMinBid;
-        auc.startTime = _newStartTime;
-        auc.deadline = _newDeadline;
-        
-        _createToken(_bpkbTokenId, _bpkbUri); // nanti dibetukan supaya tidak usah buat new token (edit isi token aja)
+        _transferToken(auctions[_id].bpkbId, msg.sender);
+        _transferToken(auctions[_id].stnkId, msg.sender);
+
+        _createToken(_bpkbTokenId, _bpkbUri);
         _createToken(_stnkTokenId, _stnkUri);
 
-        auc.bpkbId = _bpkbTokenId;
-        auc.stnkId = _stnkTokenId;
+        auctions[_id].minBid = _newMinBid;
+        auctions[_id].startTime = _newStartTime;
+        auctions[_id].endTime = _newEndTime;
+        auctions[_id].bpkbId = _bpkbTokenId;
+        auctions[_id].stnkId = _stnkTokenId;
+    }
+
+    function getAuctionDetail(
+        string memory _id
+    ) external view returns (Auction memory) {
+        return auctions[_id];
+    }
+
+    function getBidHistory(
+        string memory _id
+    ) external view returns (Bid[] memory) {
+        return bids[_id];
+    }
+
+    function tokenURI(
+        uint256 _tokenId
+    ) public view override returns (string memory) {
+        return tokenURI(_tokenId);
+    }
+
+    receive() external payable {}
+
+    fallback() external payable {
+        revert("Function does not exist");
     }
 }
