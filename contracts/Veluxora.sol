@@ -188,6 +188,8 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
             canceled: false
         });
 
+        auctionExist[_id]=true;
+
         emit NewAuctionCreated(
             msg.sender,
             _id,
