@@ -146,6 +146,12 @@ contract Veluxora is ERC721URIStorage, ReentrancyGuard {
             ended: false,
             claimed: false
         });
+<<<<<<< Updated upstream
+=======
+
+        auctionExist[_id] = true;
+
+>>>>>>> Stashed changes
         emit NewAuctionCreated(
             msg.sender,
             auctionId,
