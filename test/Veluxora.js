@@ -23,11 +23,10 @@ describe("Veluxora Auction Smart Contract", function () {
 
   it("should prevent duplicate registration", async () => {
     await veluxora.connect(user1).registerUser();
-    await expect(
-      veluxora.connect(user1).registerUser()
-    ).to.be.revertedWith("Already registered.");
+    await expect(veluxora.connect(user1).registerUser()).to.be.revertedWith(
+      "Already registered."
+    );
   });
-
 
   // AUCTION TESTS
 
@@ -37,32 +36,23 @@ describe("Veluxora Auction Smart Contract", function () {
     const now = Math.floor(Date.now() / 1000);
     const startTime = now + 10;
     const endTime = now + 3600;
-    const bpkbTokenId = 1;
-    const stnkTokenId = 2;
-    const bpkbUri = "ipfs://bpkb1";
-    const stnkUri = "ipfs://stnk1";
+    const tokenId = 1;
+    const tokenUri = "ipfs://token1";
 
     await veluxora.connect(user1).registerUser();
 
     await expect(
-      veluxora.connect(user1).createAuction(
-        id,
-        minBid,
-        startTime,
-        endTime,
-        bpkbTokenId,
-        stnkTokenId,
-        bpkbUri,
-        stnkUri
-      )
-    ).to.emit(veluxora, "NewAuctionCreated")
+      veluxora
+        .connect(user1)
+        .createAuction(id, minBid, startTime, endTime, tokenId, tokenUri)
+    )
+      .to.emit(veluxora, "NewAuctionCreated")
       .withArgs(user1.address, id, "Auction successfully created.");
 
     const auction = await veluxora.getAuctionDetail(id);
     expect(auction.creator).to.equal(user1.address);
     expect(auction.minBid).to.equal(minBid);
-    expect(auction.bpkbId).to.equal(bpkbTokenId);
-    expect(auction.stnkId).to.equal(stnkTokenId);
+    expect(auction.tokenId).to.equal(tokenId);
   });
 
   it("should not allow auction creation by unregistered user", async () => {
@@ -71,23 +61,14 @@ describe("Veluxora Auction Smart Contract", function () {
     const now = Math.floor(Date.now() / 1000);
     const startTime = now + 10;
     const endTime = now + 3600;
-    const bpkbTokenId = 1;
-    const stnkTokenId = 2;
-    const bpkbUri = "ipfs://bpkb1";
-    const stnkUri = "ipfs://stnk1";
+    const tokenId = 1;
+    const tokenUri = "ipfs://token1";
 
     // user2 is not registered
     await expect(
-      veluxora.connect(user2).createAuction(
-        id,
-        minBid,
-        startTime,
-        endTime,
-        bpkbTokenId,
-        stnkTokenId,
-        bpkbUri,
-        stnkUri
-      )
+      veluxora
+        .connect(user2)
+        .createAuction(id, minBid, startTime, endTime, tokenId, tokenUri)
     ).to.be.revertedWith("You must be a registered user.");
   });
 
@@ -97,24 +78,15 @@ describe("Veluxora Auction Smart Contract", function () {
     const now = Math.floor(Date.now() / 1000);
     const startTime = now - 200; // Past start time
     const endTime = now + 100;
-    const bpkbTokenId = 1;
-    const stnkTokenId = 2;
-    const bpkbUri = "ipfs://bpkb1";
-    const stnkUri = "ipfs://stnk1";
+    const tokenId = 1;
+    const tokenUri = "ipfs://token1";
 
     await veluxora.connect(user1).registerUser();
 
     await expect(
-      veluxora.connect(user1).createAuction(
-        id,
-        minBid,
-        startTime,
-        endTime,
-        bpkbTokenId,
-        stnkTokenId,
-        bpkbUri,
-        stnkUri
-      )
+      veluxora
+        .connect(user1)
+        .createAuction(id, minBid, startTime, endTime, tokenId, tokenUri)
     ).to.be.revertedWith("Start time must be in the future.");
   });
 
@@ -124,24 +96,15 @@ describe("Veluxora Auction Smart Contract", function () {
     const now = Math.floor(Date.now() / 1000);
     const startTime = now + 200;
     const endTime = now + 100; //endtime first
-    const bpkbTokenId = 1;
-    const stnkTokenId = 2;
-    const bpkbUri = "ipfs://bpkb1";
-    const stnkUri = "ipfs://stnk1";
+    const tokenId = 1;
+    const tokenUri = "ipfs://token1";
 
     await veluxora.connect(user1).registerUser();
 
     await expect(
-      veluxora.connect(user1).createAuction(
-        id,
-        minBid,
-        startTime,
-        endTime,
-        bpkbTokenId,
-        stnkTokenId,
-        bpkbUri,
-        stnkUri
-      )
+      veluxora
+        .connect(user1)
+        .createAuction(id, minBid, startTime, endTime, tokenId, tokenUri)
     ).to.be.revertedWith("End time must be after start time.");
   });
 
@@ -150,7 +113,7 @@ describe("Veluxora Auction Smart Contract", function () {
     const minBid = ethers.parseEther("1");
 
     // Get the current block timestamp from the blockchain
-    const currentBlock = await ethers.provider.getBlock('latest');
+    const currentBlock = await ethers.provider.getBlock("latest");
     const currentTime = currentBlock.timestamp;
 
     // Set start time to be well in the future to avoid timing issues
@@ -159,43 +122,25 @@ describe("Veluxora Auction Smart Contract", function () {
 
     const id1 = "auction1";
     const id2 = "auction2";
-    const bpkbTokenId1 = 1;
-    const stnkTokenId1 = 2;
-    const bpkbTokenId2 = 3;
-    const stnkTokenId2 = 4;
-    const bpkbUri1 = "ipfs://bpkb1";
-    const stnkUri1 = "ipfs://stnk1";
-    const bpkbUri2 = "ipfs://bpkb2";
-    const stnkUri2 = "ipfs://stnk2";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+    const tokenId2 = 2;
+    const tokenUri2 = "ipfs://token2";
 
-    await veluxora.connect(user1).createAuction(
-      id1,
-      minBid,
-      startTime,
-      endTime,
-      bpkbTokenId1,
-      stnkTokenId1,
-      bpkbUri1,
-      stnkUri1
-    )
-    await veluxora.connect(user1).createAuction(
-      id2,
-      minBid,
-      startTime,
-      endTime,
-      bpkbTokenId2,
-      stnkTokenId2,
-      bpkbUri2,
-      stnkUri2
-    )
+    await veluxora
+      .connect(user1)
+      .createAuction(id1, minBid, startTime, endTime, tokenId1, tokenUri1);
+    await veluxora
+      .connect(user1)
+      .createAuction(id2, minBid, startTime, endTime, tokenId2, tokenUri2);
 
     const auction1 = await veluxora.getAuctionDetail("auction1");
     const auction2 = await veluxora.getAuctionDetail("auction2");
 
     expect(auction1.creator).to.equal(user1.address);
     expect(auction2.creator).to.equal(user1.address);
-    expect(auction1.bpkbId).to.equal(1);
-    expect(auction2.bpkbId).to.equal(3);
+    expect(auction1.tokenId).to.equal(tokenId1);
+    expect(auction2.tokenId).to.equal(tokenId2);
   });
 
   it("should isolate state between different auctions", async () => {
@@ -204,7 +149,7 @@ describe("Veluxora Auction Smart Contract", function () {
     const minBid = ethers.parseEther("1");
 
     // Get the current block timestamp from the blockchain
-    const currentBlock = await ethers.provider.getBlock('latest');
+    const currentBlock = await ethers.provider.getBlock("latest");
     const currentTime = currentBlock.timestamp;
 
     // Set start time to be well in the future to avoid timing issues
@@ -213,35 +158,17 @@ describe("Veluxora Auction Smart Contract", function () {
 
     const id1 = "auction1";
     const id2 = "auction2";
-    const bpkbTokenId1 = 1;
-    const stnkTokenId1 = 2;
-    const bpkbTokenId2 = 3;
-    const stnkTokenId2 = 4;
-    const bpkbUri1 = "ipfs://bpkb1";
-    const stnkUri1 = "ipfs://stnk1";
-    const bpkbUri2 = "ipfs://bpkb2";
-    const stnkUri2 = "ipfs://stnk2";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+    const tokenId2 = 2;
+    const tokenUri2 = "ipfs://token2";
 
-    await veluxora.connect(user1).createAuction(
-      id1,
-      minBid,
-      startTime,
-      endTime,
-      bpkbTokenId1,
-      stnkTokenId1,
-      bpkbUri1,
-      stnkUri1
-    )
-    await veluxora.connect(user1).createAuction(
-      id2,
-      minBid,
-      startTime,
-      endTime,
-      bpkbTokenId2,
-      stnkTokenId2,
-      bpkbUri2,
-      stnkUri2
-    )
+    await veluxora
+      .connect(user1)
+      .createAuction(id1, minBid, startTime, endTime, tokenId1, tokenUri1);
+    await veluxora
+      .connect(user1)
+      .createAuction(id2, minBid, startTime, endTime, tokenId2, tokenUri2);
 
     // Move time forward to auction start
     await ethers.provider.send("evm_increaseTime", [70]);
@@ -263,129 +190,104 @@ describe("Veluxora Auction Smart Contract", function () {
   it("should allow auction cancellation before start time", async () => {
     await veluxora.connect(user1).registerUser();
     const minBid = ethers.parseEther("1");
-    
-    const currentBlock = await ethers.provider.getBlock('latest');
+
+    const currentBlock = await ethers.provider.getBlock("latest");
     const currentTime = currentBlock.timestamp;
     const startTime = currentTime + 100;
     const endTime = currentTime + 3600;
-    
-    const id = "auction1";
-    const bpkbTokenId = 1;
-    const stnkTokenId = 2;
-    const bpkbUri = "ipfs://bpkb1";
-    const stnkUri = "ipfs://stnk1";
 
-    await veluxora.connect(user1).createAuction(
-      id,
-      minBid,
-      startTime,
-      endTime,
-      bpkbTokenId,
-      stnkTokenId,
-      bpkbUri,
-      stnkUri
-    );
+    const id = "auction1";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+
+    await veluxora
+      .connect(user1)
+      .createAuction(id, minBid, startTime, endTime, tokenId1, tokenUri1);
 
     // Cancel auction
-    await expect(
-      veluxora.connect(user1).cancelAuction(id)
-    ).to.emit(veluxora, "AuctionCanceled")
+    await expect(veluxora.connect(user1).cancelAuction(id))
+      .to.emit(veluxora, "AuctionCanceled")
       .withArgs(id, "Auction canceled.");
 
     const auction = await veluxora.getAuctionDetail(id);
     expect(auction.canceled).to.be.true;
 
     // Check NFTs are returned to creator
-    expect(await veluxora.ownerOf(bpkbTokenId)).to.equal(user1.address);
-    expect(await veluxora.ownerOf(stnkTokenId)).to.equal(user1.address);
+    expect(await veluxora.ownerOf(tokenId1)).to.equal(user1.address);
   });
 
   it("should not allow cancellation after auction starts", async () => {
     await veluxora.connect(user1).registerUser();
     const minBid = ethers.parseEther("1");
-    
-    const currentBlock = await ethers.provider.getBlock('latest');
+
+    const currentBlock = await ethers.provider.getBlock("latest");
     const currentTime = currentBlock.timestamp;
     const startTime = currentTime + 10;
     const endTime = currentTime + 3600;
-    
-    const id = "auction1";
-    const bpkbTokenId = 1;
-    const stnkTokenId = 2;
-    const bpkbUri = "ipfs://bpkb1";
-    const stnkUri = "ipfs://stnk1";
 
-    await veluxora.connect(user1).createAuction(
-      id,
-      minBid,
-      startTime,
-      endTime,
-      bpkbTokenId,
-      stnkTokenId,
-      bpkbUri,
-      stnkUri
-    );
+    const id = "auction1";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+
+    await veluxora
+      .connect(user1)
+      .createAuction(id, minBid, startTime, endTime, tokenId1, tokenUri1);
 
     // Move time forward past start time
     await ethers.provider.send("evm_increaseTime", [15]);
     await ethers.provider.send("evm_mine");
 
     // Try to cancel after start
-    await expect(
-      veluxora.connect(user1).cancelAuction(id)
-    ).to.be.revertedWith("Auction already started.");
+    await expect(veluxora.connect(user1).cancelAuction(id)).to.be.revertedWith(
+      "Auction already started."
+    );
   });
 
   it("should allow auction update before start time", async () => {
     await veluxora.connect(user1).registerUser();
     const minBid = ethers.parseEther("1");
-    
-    const currentBlock = await ethers.provider.getBlock('latest');
+
+    const currentBlock = await ethers.provider.getBlock("latest");
     const currentTime = currentBlock.timestamp;
     const startTime = currentTime + 100;
     const endTime = currentTime + 3600;
-    
-    const id = "auction1";
-    const bpkbTokenId = 1;
-    const stnkTokenId = 2;
-    const bpkbUri = "ipfs://bpkb1";
-    const stnkUri = "ipfs://stnk1";
 
-    await veluxora.connect(user1).createAuction(
-      id,
-      minBid,
-      startTime,
-      endTime,
-      bpkbTokenId,
-      stnkTokenId,
-      bpkbUri,
-      stnkUri
-    );
+    const id = "auction1";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+
+    await veluxora
+      .connect(user1)
+      .createAuction(
+        id,
+        minBid,
+        startTime,
+        endTime,
+        tokenId1,
+        tokenUri1
+      );
 
     // Update auction
     const newMinBid = ethers.parseEther("2");
     const newStartTime = currentTime + 200;
     const newEndTime = currentTime + 4000;
-    const newBpkbTokenId = 3;
-    const newStnkTokenId = 4;
-    const newBpkbUri = "ipfs://newbpkb";
-    const newStnkUri = "ipfs://newstnk";
+    const newTokenId = 3;
+    const newTokenUri = "ipfs://newtoken";
 
-    await veluxora.connect(user1).updateAuction(
-      id,
-      newMinBid,
-      newStartTime,
-      newEndTime,
-      newBpkbTokenId,
-      newStnkTokenId,
-      newBpkbUri,
-      newStnkUri
-    );
+    await veluxora
+      .connect(user1)
+      .updateAuction(
+        id,
+        newMinBid,
+        newStartTime,
+        newEndTime,
+        newTokenId,
+        newTokenUri
+      );
 
     const updatedAuction = await veluxora.getAuctionDetail(id);
     expect(updatedAuction.minBid).to.equal(newMinBid);
-    expect(updatedAuction.bpkbId).to.equal(newBpkbTokenId);
-    expect(updatedAuction.stnkId).to.equal(newStnkTokenId);
+    expect(updatedAuction.tokenId).to.equal(newTokenId);
   });
 
   // BIDDING TESTS
@@ -396,28 +298,26 @@ describe("Veluxora Auction Smart Contract", function () {
     await veluxora.connect(user2).registerUser();
     await veluxora.connect(user3).registerUser();
     const minBid = ethers.parseEther("1");
-    
-    const currentBlock = await ethers.provider.getBlock('latest');
+
+    const currentBlock = await ethers.provider.getBlock("latest");
     const currentTime = currentBlock.timestamp;
     const startTime = currentTime + 10;
     const endTime = currentTime + 3600;
-    
-    const id = "auction1";
-    const bpkbTokenId = 1;
-    const stnkTokenId = 2;
-    const bpkbUri = "ipfs://bpkb1";
-    const stnkUri = "ipfs://stnk1";
 
-    await veluxora.connect(user1).createAuction(
-      id,
-      minBid,
-      startTime,
-      endTime,
-      bpkbTokenId,
-      stnkTokenId,
-      bpkbUri,
-      stnkUri
-    );
+    const id = "auction1";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+
+    await veluxora
+      .connect(user1)
+      .createAuction(
+        id,
+        minBid,
+        startTime,
+        endTime,
+        tokenId1,
+        tokenUri1
+      );
 
     // Move time forward to auction start
     await ethers.provider.send("evm_increaseTime", [15]);
@@ -427,46 +327,51 @@ describe("Veluxora Auction Smart Contract", function () {
     const user2BalanceBefore = await ethers.provider.getBalance(user2.address);
     await expect(
       veluxora.connect(user2).bid(id, { value: ethers.parseEther("2") })
-    ).to.emit(veluxora, "NewBidAdded")
+    )
+      .to.emit(veluxora, "NewBidAdded")
       .withArgs(user2.address, id, ethers.parseEther("2"), "New bid placed.");
 
     // User3 places higher bid - user2 should get refund
     await expect(
       veluxora.connect(user3).bid(id, { value: ethers.parseEther("3") })
-    ).to.emit(veluxora, "DepositReturned")
-      .withArgs(user2.address, id, ethers.parseEther("2"), "Previous deposit returned.");
+    )
+      .to.emit(veluxora, "DepositReturned")
+      .withArgs(
+        user2.address,
+        id,
+        ethers.parseEther("2"),
+        "Previous deposit returned."
+      );
 
     const auction = await veluxora.getAuctionDetail(id);
     expect(auction.highestBid).to.equal(ethers.parseEther("3"));
     expect(auction.highestBidder).to.equal(user3.address);
   });
 
-it("should prevent creator from bidding in own auction", async () => {
+  it("should prevent creator from bidding in own auction", async () => {
     // Setup auction
     await veluxora.connect(user1).registerUser();
     const minBid = ethers.parseEther("1");
-    
-    const currentBlock = await ethers.provider.getBlock('latest');
+
+    const currentBlock = await ethers.provider.getBlock("latest");
     const currentTime = currentBlock.timestamp;
     const startTime = currentTime + 10;
     const endTime = currentTime + 3600;
-    
-    const id = "auction1";
-    const bpkbTokenId = 1;
-    const stnkTokenId = 2;
-    const bpkbUri = "ipfs://bpkb1";
-    const stnkUri = "ipfs://stnk1";
 
-    await veluxora.connect(user1).createAuction(
-      id,
-      minBid,
-      startTime,
-      endTime,
-      bpkbTokenId,
-      stnkTokenId,
-      bpkbUri,
-      stnkUri
-    );
+    const id = "auction1";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+
+    await veluxora
+      .connect(user1)
+      .createAuction(
+        id,
+        minBid,
+        startTime,
+        endTime,
+        tokenId1,
+        tokenUri1
+      );
 
     // Move time forward to auction start
     await ethers.provider.send("evm_increaseTime", [15]);
@@ -475,7 +380,7 @@ it("should prevent creator from bidding in own auction", async () => {
     // Creator tries to bid - this should work as the contract doesn't prevent it
     // But in real-world scenarios, this might be prevented in frontend
     await veluxora.connect(user1).bid(id, { value: ethers.parseEther("2") });
-    
+
     const auction = await veluxora.getAuctionDetail(id);
     expect(auction.highestBidder).to.equal(user1.address);
   });
@@ -485,28 +390,26 @@ it("should prevent creator from bidding in own auction", async () => {
     await veluxora.connect(user1).registerUser();
     await veluxora.connect(user2).registerUser();
     const minBid = ethers.parseEther("1");
-    
-    const currentBlock = await ethers.provider.getBlock('latest');
+
+    const currentBlock = await ethers.provider.getBlock("latest");
     const currentTime = currentBlock.timestamp;
     const startTime = currentTime + 10;
     const endTime = currentTime + 100; // Short auction
-    
-    const id = "auction1";
-    const bpkbTokenId = 1;
-    const stnkTokenId = 2;
-    const bpkbUri = "ipfs://bpkb1";
-    const stnkUri = "ipfs://stnk1";
 
-    await veluxora.connect(user1).createAuction(
-      id,
-      minBid,
-      startTime,
-      endTime,
-      bpkbTokenId,
-      stnkTokenId,
-      bpkbUri,
-      stnkUri
-    );
+    const id = "auction1";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+
+    await veluxora
+      .connect(user1)
+      .createAuction(
+        id,
+        minBid,
+        startTime,
+        endTime,
+        tokenId1,
+        tokenUri1
+      );
 
     // Move time forward past the deadline
     await ethers.provider.send("evm_increaseTime", [150]);
@@ -523,28 +426,26 @@ it("should prevent creator from bidding in own auction", async () => {
     await veluxora.connect(user1).registerUser();
     await veluxora.connect(user2).registerUser();
     const minBid = ethers.parseEther("2");
-    
-    const currentBlock = await ethers.provider.getBlock('latest');
+
+    const currentBlock = await ethers.provider.getBlock("latest");
     const currentTime = currentBlock.timestamp;
     const startTime = currentTime + 10;
     const endTime = currentTime + 3600;
-    
-    const id = "auction1";
-    const bpkbTokenId = 1;
-    const stnkTokenId = 2;
-    const bpkbUri = "ipfs://bpkb1";
-    const stnkUri = "ipfs://stnk1";
 
-    await veluxora.connect(user1).createAuction(
-      id,
-      minBid,
-      startTime,
-      endTime,
-      bpkbTokenId,
-      stnkTokenId,
-      bpkbUri,
-      stnkUri
-    );
+    const id = "auction1";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+
+    await veluxora
+      .connect(user1)
+      .createAuction(
+        id,
+        minBid,
+        startTime,
+        endTime,
+        tokenId1,
+        tokenUri1
+      );
 
     // Move time forward to auction start
     await ethers.provider.send("evm_increaseTime", [15]);
@@ -562,28 +463,26 @@ it("should prevent creator from bidding in own auction", async () => {
     await veluxora.connect(user2).registerUser();
     await veluxora.connect(user3).registerUser();
     const minBid = ethers.parseEther("1");
-    
-    const currentBlock = await ethers.provider.getBlock('latest');
+
+    const currentBlock = await ethers.provider.getBlock("latest");
     const currentTime = currentBlock.timestamp;
     const startTime = currentTime + 10;
     const endTime = currentTime + 3600;
-    
-    const id = "auction1";
-    const bpkbTokenId = 1;
-    const stnkTokenId = 2;
-    const bpkbUri = "ipfs://bpkb1";
-    const stnkUri = "ipfs://stnk1";
 
-    await veluxora.connect(user1).createAuction(
-      id,
-      minBid,
-      startTime,
-      endTime,
-      bpkbTokenId,
-      stnkTokenId,
-      bpkbUri,
-      stnkUri
-    );
+    const id = "auction1";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+
+    await veluxora
+      .connect(user1)
+      .createAuction(
+        id,
+        minBid,
+        startTime,
+        endTime,
+        tokenId1,
+        tokenUri1
+      );
 
     // Move time forward to auction start
     await ethers.provider.send("evm_increaseTime", [15]);
@@ -603,33 +502,31 @@ it("should prevent creator from bidding in own auction", async () => {
 
   // // CLAIMING TESTS
 
- it("should transfer NFT + funds after bid deadline", async () => {
+  it("should transfer NFT + funds after bid deadline", async () => {
     // Setup auction
     await veluxora.connect(user1).registerUser();
     await veluxora.connect(user2).registerUser();
     const minBid = ethers.parseEther("1");
-    
-    const currentBlock = await ethers.provider.getBlock('latest');
+
+    const currentBlock = await ethers.provider.getBlock("latest");
     const currentTime = currentBlock.timestamp;
     const startTime = currentTime + 10;
     const endTime = currentTime + 100;
-    
-    const id = "auction1";
-    const bpkbTokenId = 1;
-    const stnkTokenId = 2;
-    const bpkbUri = "ipfs://bpkb1";
-    const stnkUri = "ipfs://stnk1";
 
-    await veluxora.connect(user1).createAuction(
-      id,
-      minBid,
-      startTime,
-      endTime,
-      bpkbTokenId,
-      stnkTokenId,
-      bpkbUri,
-      stnkUri
-    );
+    const id = "auction1";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+
+    await veluxora
+      .connect(user1)
+      .createAuction(
+        id,
+        minBid,
+        startTime,
+        endTime,
+        tokenId1,
+        tokenUri1
+      );
 
     // Move time forward to auction start
     await ethers.provider.send("evm_increaseTime", [15]);
@@ -643,50 +540,50 @@ it("should prevent creator from bidding in own auction", async () => {
     await ethers.provider.send("evm_mine");
 
     // Winner claims NFT
-    await expect(
-      veluxora.connect(user2).claimNFTForAuctionWinner(id)
-    ).to.emit(veluxora, "NFTClaimedByWinner")
-      .withArgs(id, user2.address, bpkbTokenId, stnkTokenId);
+    await expect(veluxora.connect(user2).claimNFTForAuctionWinner(id))
+      .to.emit(veluxora, "NFTClaimedByWinner")
+      .withArgs(id, user2.address, tokenId1);
 
     // Creator claims ETH
-    await expect(
-      veluxora.connect(user1).claimETHForAuctionCreator(id)
-    ).to.emit(veluxora, "WinningETHTransferred")
-      .withArgs(user1.address, id, ethers.parseEther("2"), "Funds transferred to auction creator.");
+    await expect(veluxora.connect(user1).claimETHForAuctionCreator(id))
+      .to.emit(veluxora, "WinningETHTransferred")
+      .withArgs(
+        user1.address,
+        id,
+        ethers.parseEther("2"),
+        "Funds transferred to auction creator."
+      );
 
     // Check NFT ownership
-    expect(await veluxora.ownerOf(bpkbTokenId)).to.equal(user2.address);
-    expect(await veluxora.ownerOf(stnkTokenId)).to.equal(user2.address);
+    expect(await veluxora.ownerOf(tokenId1)).to.equal(user2.address);
   });
 
-   it("should prevent claim by non-highest bidder", async () => {
+  it("should prevent claim by non-highest bidder", async () => {
     // Setup auction
     await veluxora.connect(user1).registerUser();
     await veluxora.connect(user2).registerUser();
     await veluxora.connect(user3).registerUser();
     const minBid = ethers.parseEther("1");
-    
-    const currentBlock = await ethers.provider.getBlock('latest');
+
+    const currentBlock = await ethers.provider.getBlock("latest");
     const currentTime = currentBlock.timestamp;
     const startTime = currentTime + 10;
     const endTime = currentTime + 100;
-    
-    const id = "auction1";
-    const bpkbTokenId = 1;
-    const stnkTokenId = 2;
-    const bpkbUri = "ipfs://bpkb1";
-    const stnkUri = "ipfs://stnk1";
 
-    await veluxora.connect(user1).createAuction(
-      id,
-      minBid,
-      startTime,
-      endTime,
-      bpkbTokenId,
-      stnkTokenId,
-      bpkbUri,
-      stnkUri
-    );
+    const id = "auction1";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+
+    await veluxora
+      .connect(user1)
+      .createAuction(
+        id,
+        minBid,
+        startTime,
+        endTime,
+        tokenId1,
+        tokenUri1
+      );
 
     // Move time forward to auction start
     await ethers.provider.send("evm_increaseTime", [15]);
@@ -706,33 +603,31 @@ it("should prevent creator from bidding in own auction", async () => {
     ).to.be.revertedWith("Caller isn't a the highest bidder");
   });
 
-   it("should prevent double claiming", async () => {
+  it("should prevent double claiming", async () => {
     // Setup auction
     await veluxora.connect(user1).registerUser();
     await veluxora.connect(user2).registerUser();
     const minBid = ethers.parseEther("1");
-    
-    const currentBlock = await ethers.provider.getBlock('latest');
+
+    const currentBlock = await ethers.provider.getBlock("latest");
     const currentTime = currentBlock.timestamp;
     const startTime = currentTime + 10;
     const endTime = currentTime + 100;
-    
-    const id = "auction1";
-    const bpkbTokenId = 1;
-    const stnkTokenId = 2;
-    const bpkbUri = "ipfs://bpkb1";
-    const stnkUri = "ipfs://stnk1";
 
-    await veluxora.connect(user1).createAuction(
-      id,
-      minBid,
-      startTime,
-      endTime,
-      bpkbTokenId,
-      stnkTokenId,
-      bpkbUri,
-      stnkUri
-    );
+    const id = "auction1";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+
+    await veluxora
+      .connect(user1)
+      .createAuction(
+        id,
+        minBid,
+        startTime,
+        endTime,
+        tokenId1,
+        tokenUri1
+      );
 
     // Move time forward to auction start
     await ethers.provider.send("evm_increaseTime", [15]);
@@ -753,8 +648,4 @@ it("should prevent creator from bidding in own auction", async () => {
       veluxora.connect(user1).claimETHForAuctionCreator(id)
     ).to.be.revertedWith("Already claimed.");
   });
-
-
-
-
 });

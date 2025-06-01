@@ -11,8 +11,7 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
     //
     struct Auction {
         address creator;
-        uint256 bpkbId;
-        uint256 stnkId;
+        uint256 tokenId;
         uint256 minBid;
         uint256 highestBid;
         address highestBidder;
@@ -61,8 +60,7 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
     event NFTClaimedByWinner(
         string indexed auctionId,
         address indexed winner,
-        uint256 bpkbTokenId,
-        uint256 stnkTokenId
+        uint256 tokenId
     );
 
     event AuctionCanceled(string auctionId, string message);
@@ -158,27 +156,22 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         uint256 _minBid,
         uint256 _startTime,
         uint256 _endTime,
-        uint256 _bpkbTokenId,
-        uint256 _stnkTokenId,
-        string memory _bpkbUri,
-        string memory _stnkUri
+        uint256 _tokenId,
+        string memory _tokenUri
     )
         external
         onlyRegistered
-        onlyNonRegisteredToken(_bpkbTokenId)
-        onlyNonRegisteredToken(_stnkTokenId)
+        onlyNonRegisteredToken(_tokenId)
     {
         require(_minBid > 0, "Minimum bid must be greater than 0.");
         require(_startTime >= block.timestamp, "Start time must be in the future.");
         require(_endTime > _startTime, "End time must be after start time.");
 
-        _createToken(_bpkbTokenId, _bpkbUri);
-        _createToken(_stnkTokenId, _stnkUri);
+        _createToken(_tokenId, _tokenUri);
 
         auctions[_id] = Auction({
             creator: msg.sender,
-            bpkbId: _bpkbTokenId,
-            stnkId: _stnkTokenId,
+            tokenId: _tokenId,
             minBid: _minBid,
             highestBid: 0,
             highestBidder: address(0),
@@ -246,14 +239,12 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         onlyIfNotCanceled(_id)
         nonReentrant
     {
-        _transferToken(auctions[_id].bpkbId, msg.sender);
-        _transferToken(auctions[_id].stnkId, msg.sender);
+        _transferToken(auctions[_id].tokenId, msg.sender);
 
         emit NFTClaimedByWinner(
             _id,
             msg.sender,
-            auctions[_id].bpkbId,
-            auctions[_id].stnkId
+            auctions[_id].tokenId
         );
     }
 
@@ -293,8 +284,7 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         nonReentrant
     {
         auctions[_id].canceled = true;
-        _transferToken(auctions[_id].bpkbId, msg.sender);
-        _transferToken(auctions[_id].stnkId, msg.sender);
+        _transferToken(auctions[_id].tokenId, msg.sender);
 
         emit AuctionCanceled(_id, "Auction canceled.");
     }
@@ -304,10 +294,8 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         uint256 _newMinBid,
         uint256 _newStartTime,
         uint256 _newEndTime,
-        uint256 _bpkbTokenId,
-        uint256 _stnkTokenId,
-        string memory _bpkbUri,
-        string memory _stnkUri
+        uint256 _tokenId,
+        string memory _tokenUri
     )
         external
         auctionExists(_id)
@@ -322,17 +310,14 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
             "Start time must be before deadline."
         );
 
-        _transferToken(auctions[_id].bpkbId, msg.sender);
-        _transferToken(auctions[_id].stnkId, msg.sender);
+        _transferToken(auctions[_id].tokenId, msg.sender);
 
-        _createToken(_bpkbTokenId, _bpkbUri);
-        _createToken(_stnkTokenId, _stnkUri);
+        _createToken(_tokenId, _tokenUri);
 
         auctions[_id].minBid = _newMinBid;
         auctions[_id].startTime = _newStartTime;
         auctions[_id].endTime = _newEndTime;
-        auctions[_id].bpkbId = _bpkbTokenId;
-        auctions[_id].stnkId = _stnkTokenId;
+        auctions[_id].tokenId = _tokenId;
     }
 
     function getAuctionDetail(
