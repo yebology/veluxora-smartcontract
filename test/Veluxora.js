@@ -72,6 +72,24 @@ describe("Veluxora Auction Smart Contract", function () {
     ).to.be.revertedWith("You must be a registered user.");
   });
 
+  it("should not allow auction creation with zero minimum bid", async () => {
+    const id = "auction1";
+    const minBid = 0; // Invalid minimum bid
+    const now = Math.floor(Date.now() / 1000);
+    const startTime = now + 10;
+    const endTime = now + 3600;
+    const tokenId = 1;
+    const tokenUri = "ipfs://token1";
+
+    await veluxora.connect(user1).registerUser();
+
+    await expect(
+      veluxora
+        .connect(user1)
+        .createAuction(id, minBid, startTime, endTime, tokenId, tokenUri)
+    ).to.be.revertedWith("Minimum bid must be greater than 0.");
+  });
+
   it("should not allow auction creation with past start time", async () => {
     const id = "auction1";
     const minBid = ethers.parseEther("1");
@@ -106,6 +124,28 @@ describe("Veluxora Auction Smart Contract", function () {
         .connect(user1)
         .createAuction(id, minBid, startTime, endTime, tokenId, tokenUri)
     ).to.be.revertedWith("End time must be after start time.");
+  });
+
+  it("should not allow auction creation with duplicate token ID", async () => {
+    await veluxora.connect(user1).registerUser();
+    const minBid = ethers.parseEther("1");
+    const now = Math.floor(Date.now() / 1000);
+    const startTime = now + 1000;
+    const endTime = now + 3600;
+    const tokenId = 1;
+    const tokenUri = "ipfs://token1";
+
+    // Create first auction
+    await veluxora
+      .connect(user1)
+      .createAuction("auction1", minBid, startTime, endTime, tokenId, tokenUri);
+
+    // Try to create second auction with same token ID
+    await expect(
+      veluxora
+        .connect(user1)
+        .createAuction("auction2", minBid, startTime, endTime, tokenId, tokenUri)
+    ).to.be.revertedWith("Token ID already registered!");
   });
 
   it("should support multiple auctions per user with different token IDs", async () => {
@@ -290,6 +330,82 @@ describe("Veluxora Auction Smart Contract", function () {
     expect(updatedAuction.tokenId).to.equal(newTokenId);
   });
 
+  it("should not allow update with invalid minimum bid", async () => {
+    await veluxora.connect(user1).registerUser();
+    const minBid = ethers.parseEther("1");
+
+    const currentBlock = await ethers.provider.getBlock("latest");
+    const currentTime = currentBlock.timestamp;
+    const startTime = currentTime + 100;
+    const endTime = currentTime + 3600;
+
+    const id = "auction1";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+
+    await veluxora
+      .connect(user1)
+      .createAuction(id, minBid, startTime, endTime, tokenId1, tokenUri1);
+
+    // Try to update with zero minimum bid
+    const newMinBid = 0;
+    const newStartTime = currentTime + 200;
+    const newEndTime = currentTime + 4000;
+    const newTokenId = 3;
+    const newTokenUri = "ipfs://newtoken";
+
+    await expect(
+      veluxora
+        .connect(user1)
+        .updateAuction(
+          id,
+          newMinBid,
+          newStartTime,
+          newEndTime,
+          newTokenId,
+          newTokenUri
+        )
+    ).to.be.revertedWith("Minimum bid must be greater than 0.");
+  });
+
+  it("should not allow update with invalid time range", async () => {
+    await veluxora.connect(user1).registerUser();
+    const minBid = ethers.parseEther("1");
+
+    const currentBlock = await ethers.provider.getBlock("latest");
+    const currentTime = currentBlock.timestamp;
+    const startTime = currentTime + 100;
+    const endTime = currentTime + 3600;
+
+    const id = "auction1";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+
+    await veluxora
+      .connect(user1)
+      .createAuction(id, minBid, startTime, endTime, tokenId1, tokenUri1);
+
+    // Try to update with end time before start time
+    const newMinBid = ethers.parseEther("2");
+    const newStartTime = currentTime + 4000;
+    const newEndTime = currentTime + 200; // End time before start time
+    const newTokenId = 3;
+    const newTokenUri = "ipfs://newtoken";
+
+    await expect(
+      veluxora
+        .connect(user1)
+        .updateAuction(
+          id,
+          newMinBid,
+          newStartTime,
+          newEndTime,
+          newTokenId,
+          newTokenUri
+        )
+    ).to.be.revertedWith("Start time must be before deadline.");
+  });
+
   // BIDDING TESTS
 
   it("should allow users to bid and return ETH on being outbid", async () => {
@@ -457,6 +573,46 @@ describe("Veluxora Auction Smart Contract", function () {
     ).to.be.revertedWith("Bid below minimum.");
   });
 
+  it("should reject bid not higher than current highest bid", async () => {
+    // Setup auction
+    await veluxora.connect(user1).registerUser();
+    await veluxora.connect(user2).registerUser();
+    await veluxora.connect(user3).registerUser();
+    const minBid = ethers.parseEther("1");
+
+    const currentBlock = await ethers.provider.getBlock("latest");
+    const currentTime = currentBlock.timestamp;
+    const startTime = currentTime + 10;
+    const endTime = currentTime + 3600;
+
+    const id = "auction1";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+
+    await veluxora
+      .connect(user1)
+      .createAuction(
+        id,
+        minBid,
+        startTime,
+        endTime,
+        tokenId1,
+        tokenUri1
+      );
+
+    // Move time forward to auction start
+    await ethers.provider.send("evm_increaseTime", [15]);
+    await ethers.provider.send("evm_mine");
+
+    // User2 places first bid
+    await veluxora.connect(user2).bid(id, { value: ethers.parseEther("2") });
+
+    // User3 tries to bid same amount
+    await expect(
+      veluxora.connect(user3).bid(id, { value: ethers.parseEther("2") })
+    ).to.be.revertedWith("Bid not high enough.");
+  });
+
   it("should get bid history correctly", async () => {
     // Setup auction
     await veluxora.connect(user1).registerUser();
@@ -602,6 +758,7 @@ describe("Veluxora Auction Smart Contract", function () {
       veluxora.connect(user2).claimNFTForAuctionWinner(id)
     ).to.be.revertedWith("Caller isn't a the highest bidder");
   });
+
 
   it("should prevent double claiming", async () => {
     // Setup auction

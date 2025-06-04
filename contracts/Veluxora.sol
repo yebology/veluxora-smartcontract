@@ -127,6 +127,51 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         _;
     }
 
+    // New modifiers from converted requires
+    modifier onlyNotRegistered() {
+        require(!registeredUsers[msg.sender], "Already registered.");
+        _;
+    }
+
+    modifier validMinBid(uint256 _minBid) {
+        require(_minBid > 0, "Minimum bid must be greater than 0.");
+        _;
+    }
+
+    modifier validStartTime(uint256 _startTime) {
+        require(_startTime >= block.timestamp, "Start time must be in the future.");
+        _;
+    }
+
+    modifier validEndTime(uint256 _startTime, uint256 _endTime) {
+        require(_endTime > _startTime, "End time must be after start time.");
+        _;
+    }
+
+    modifier validBidAmount(string memory _id) {
+        require(msg.value >= auctions[_id].minBid, "Bid below minimum.");
+        require(msg.value > auctions[_id].highestBid, "Bid not high enough.");
+        _;
+    }
+
+    modifier onlyNotClaimed(string memory _id) {
+        require(!auctions[_id].claimed, "Already claimed.");
+        _;
+    }
+
+    modifier onlyIfHasBids(string memory _id) {
+        require(auctions[_id].highestBid > 0, "No bids.");
+        _;
+    }
+
+    modifier validUpdateTimes(uint256 _newStartTime, uint256 _newEndTime) {
+        require(
+            _newStartTime < _newEndTime,
+            "Start time must be before deadline."
+        );
+        _;
+    }
+
     constructor() ERC721("Veluxora", "VLX") {}
 
     function _createToken(uint256 _tokenId, string memory _uri) private {
@@ -144,8 +189,7 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
     }
 
     // Register user
-    function registerUser() external {
-        require(!registeredUsers[msg.sender], "Already registered.");
+    function registerUser() external onlyNotRegistered {
         registeredUsers[msg.sender] = true;
         emit NewUserRegistered(msg.sender, "User registered successfully");
     }
@@ -162,12 +206,13 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         external
         onlyRegistered
         onlyNonRegisteredToken(_tokenId)
+        validMinBid(_minBid)
+        validStartTime(_startTime)
+        validEndTime(_startTime, _endTime)
     {
-        require(_minBid > 0, "Minimum bid must be greater than 0.");
-        require(_startTime >= block.timestamp, "Start time must be in the future.");
-        require(_endTime > _startTime, "End time must be after start time.");
-
         _createToken(_tokenId, _tokenUri);
+
+        tokenExist[_tokenId] = true;
 
         auctions[_id] = Auction({
             creator: msg.sender,
@@ -200,11 +245,9 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         auctionExists(_id)
         onlyWhileAuctionActive(_id)
         onlyIfNotCanceled(_id)
+        validBidAmount(_id)
         nonReentrant
     {
-        require(msg.value >= auctions[_id].minBid, "Bid below minimum.");
-        require(msg.value > auctions[_id].highestBid, "Bid not high enough.");
-
         if (auctions[_id].highestBidder != address(0)) {
             _transferETH(
                 payable(auctions[_id].highestBidder),
@@ -256,11 +299,10 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         auctionExists(_id)
         onlyAuctionCreator(_id)
         onlyAfterDeadline(_id)
+        onlyNotClaimed(_id)
+        onlyIfHasBids(_id)
         nonReentrant
     {
-        require(!auctions[_id].claimed, "Already claimed.");
-        require(auctions[_id].highestBid > 0, "No bids.");
-
         auctions[_id].claimed = true;
         _transferETH(payable(auctions[_id].creator), auctions[_id].highestBid);
 
@@ -302,14 +344,10 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         onlyAuctionCreator(_id)
         onlyBeforeAuctionStart(_id)
         onlyIfNotCanceled(_id)
+        validMinBid(_newMinBid)
+        validUpdateTimes(_newStartTime, _newEndTime)
         nonReentrant
     {
-        require(_newMinBid > 0, "Minimum bid must be greater than 0.");
-        require(
-            _newStartTime < _newEndTime,
-            "Start time must be before deadline."
-        );
-
         _transferToken(auctions[_id].tokenId, msg.sender);
 
         _createToken(_tokenId, _tokenUri);
