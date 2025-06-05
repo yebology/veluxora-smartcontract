@@ -10,7 +10,7 @@ module.exports = {
     holesky: {
       url: `https://ethereum-holesky.publicnode.com`,
       accounts: [process.env.PRIVATE_KEY],
-      // chainId: 17000
+      chainId: 17000
     },
   },
   etherscan: {
