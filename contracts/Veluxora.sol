@@ -370,9 +370,9 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         return bids[_id];
     }
 
-    function tokenURI(
+    function showtokenURI(
         uint256 _tokenId
-    ) public view override returns (string memory) {
+    ) external view returns (string memory) {
         return tokenURI(_tokenId);
     }
 
