@@ -53,16 +53,17 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
     );
     event WinningETHTransferred(
         address indexed creator,
-        string indexed auctionId,
+        string auctionId,
         uint256 amount,
         string message
     );
     event NFTClaimedByWinner(
-        string indexed auctionId,
         address indexed winner,
-        uint256 tokenId
+        string auctionId,
+        uint256 tokenId,
+        string message
     );
-
+    event AuctionUpdated(string auctionId, string message);
     event AuctionCanceled(string auctionId, string message);
 
     // Modifiers
@@ -139,7 +140,10 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
     }
 
     modifier validStartTime(uint256 _startTime) {
-        require(_startTime >= block.timestamp, "Start time must be in the future.");
+        require(
+            _startTime >= block.timestamp,
+            "Start time must be in the future."
+        );
         _;
     }
 
@@ -226,7 +230,7 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
             canceled: false
         });
 
-        auctionExist[_id]=true;
+        auctionExist[_id] = true;
 
         emit NewAuctionCreated(
             msg.sender,
@@ -285,9 +289,10 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         _transferToken(auctions[_id].tokenId, msg.sender);
 
         emit NFTClaimedByWinner(
-            _id,
             msg.sender,
-            auctions[_id].tokenId
+            _id,
+            auctions[_id].tokenId,
+            "NFT claimed successfully."
         );
     }
 
@@ -356,6 +361,8 @@ contract Veluxora is ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         auctions[_id].startTime = _newStartTime;
         auctions[_id].endTime = _newEndTime;
         auctions[_id].tokenId = _tokenId;
+
+        emit AuctionUpdated(_id, "Auction successfully updated.");
     }
 
     function getAuctionDetail(
