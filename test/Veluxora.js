@@ -1,4 +1,4 @@
-const { expect } = require("chai");
+const { expect, use } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("Veluxora Auction Smart Contract", function () {
@@ -464,6 +464,77 @@ describe("Veluxora Auction Smart Contract", function () {
     expect(auction.highestBidder).to.equal(user3.address);
   });
 
+  it("should allow users to bid and return ETH on doing rebid (bid again when still being top bidder)", async () => {
+    // Setup auction
+    await veluxora.connect(user1).registerUser();
+    await veluxora.connect(user2).registerUser();
+    await veluxora.connect(user3).registerUser();
+    const minBid = ethers.parseEther("1");
+
+    const currentBlock = await ethers.provider.getBlock("latest");
+    const currentTime = currentBlock.timestamp;
+    const startTime = currentTime + 10;
+    const endTime = currentTime + 3600;
+
+    const id = "auction1";
+    const tokenId1 = 1;
+    const tokenUri1 = "ipfs://token1";
+
+    await veluxora
+      .connect(user1)
+      .createAuction(
+        id,
+        minBid,
+        startTime,
+        endTime,
+        tokenId1,
+        tokenUri1
+      );
+
+    // Move time forward to auction start
+    await ethers.provider.send("evm_increaseTime", [15]);
+    await ethers.provider.send("evm_mine");
+
+    // User2 places first bid
+    const user2BalanceBefore = await ethers.provider.getBalance(user2.address);
+    
+    const tx1 = await veluxora.connect(user2).bid(id, { value: ethers.parseEther("2") });
+    const receipt1 = await tx1.wait();
+    const gasUsed1 = receipt1.gasUsed * receipt1.gasPrice;
+    
+    await expect(tx1)
+      .to.emit(veluxora, "NewBidAdded")
+      .withArgs(user2.address, id, ethers.parseEther("2"), "New bid placed.");
+
+    // User2 places higher bid - should get refund
+    const tx2 = await veluxora.connect(user2).bid(id, { value: ethers.parseEther("3") });
+    const receipt2 = await tx2.wait();
+    const gasUsed2 = receipt2.gasUsed * receipt2.gasPrice;
+    
+    await expect(tx2)
+      .to.emit(veluxora, "DepositReturned")
+      .withArgs(
+        user2.address,
+        id,
+        ethers.parseEther("2"),
+        "Previous deposit returned."
+      );
+
+    const auction = await veluxora.getAuctionDetail(id);
+    expect(auction.highestBid).to.equal(ethers.parseEther("3"));
+    expect(auction.highestBidder).to.equal(user2.address);
+
+    // Check user2 balance after rebid - accounting for gas costs
+    const user2BalanceAfter = await ethers.provider.getBalance(user2.address);
+    const totalGasUsed = gasUsed1 + gasUsed2;
+    const expectedBalance = user2BalanceBefore - ethers.parseEther("3") - totalGasUsed;
+    
+    expect(user2BalanceAfter).to.equal(expectedBalance);
+    
+    console.log("Total gas used:", ethers.formatEther(totalGasUsed), "ETH");
+    console.log("Net ETH spent on bids:", ethers.formatEther(ethers.parseEther("3")), "ETH");
+});
+
   it("should prevent creator from bidding in own auction", async () => {
     // Setup auction
     await veluxora.connect(user1).registerUser();
@@ -698,7 +769,7 @@ describe("Veluxora Auction Smart Contract", function () {
     // Winner claims NFT
     await expect(veluxora.connect(user2).claimNFTForAuctionWinner(id))
       .to.emit(veluxora, "NFTClaimedByWinner")
-      .withArgs(id, user2.address, tokenId1);
+      .withArgs(user2.address,id, tokenId1,"NFT claimed successfully.");
 
     // Creator claims ETH
     await expect(veluxora.connect(user1).claimETHForAuctionCreator(id))
