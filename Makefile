@@ -10,7 +10,7 @@ coverage:
 	npx hardhat coverage
 
 deploy:
-	npx hardhat ignition deploy ignition/modules/Veluxora.js --network holesky
+	npx hardhat ignition deploy ignition/modules/Veluxora.js --network optimism
 
 verify:
-	npx hardhat verify --network holesky ${CONTRACT_ADDRESS}
+	npx hardhat verify --network optimism ${CONTRACT_ADDRESS}
